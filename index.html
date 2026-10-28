@@ -12806,5 +12806,388 @@ document.documentElement.dataset.memoPmafUiFeedback=VERSION;
 })(typeof window!=='undefined'?window:globalThis);
 </script>
 
+
+<style id="memoPmafSyncFinal01Css">
+.memo-sync-estado{
+  margin:10px 0 0;
+  padding:7px 10px;
+  border:1px solid #dbe4e9;
+  border-radius:8px;
+  background:#f4f7fa;
+  color:#536670;
+  font-size:11.5px;
+  line-height:1.35;
+}
+.memo-sync-estado strong{color:#0F2638}
+</style>
+
+<script id="memoPmafSyncFinal01">
+(function(root){
+'use strict';
+
+/* ============================================================
+   MI-SEGUIMIENTO-PMAF-05 · Integración GitHub final
+   Pensamiento Matemático Aplicado a las Finanzas I
+   Segundo Parcial
+   ============================================================ */
+
+const VERSION='MEMO-PMAF1-P2-SYNC-FINAL-01';
+const ENDPOINT='https://script.google.com/macros/s/AKfycbyWTSMJnmMMs5L4PoVuf7uSW5mUB7_Fn-lsQ-OQBQXtQ290nZZ_gDgU3kbgv87YwybyTA/exec';
+const ENABLED=true;
+const ROUTE_ID_SYNC='PMAF1-P2';
+const ROUTE_VERSION_SYNC='v1.0';
+const GROUPS=new Set(['501']);
+
+const QUEUE_KEY='memoSyncQueue_PMAF1P2_final01';
+const SESSION_KEY='memoSyncSession_PMAF1P2_final01';
+const CIERRE_KEY_PREFIX='memoSyncCierre_PMAF1P2_';
+const RETO_KEY_PREFIX='memoSyncReto_PMAF1P2_';
+
+function uuid(){
+  if(root.crypto && typeof root.crypto.randomUUID==='function') return root.crypto.randomUUID();
+  return 'evt-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+}
+
+function studentId(){
+  return String(alumno?.studentId||'').trim();
+}
+
+function validStudent(){
+  const sid=studentId();
+  return /^\d{5}$/.test(sid) && GROUPS.has(sid.slice(0,3));
+}
+
+function sessionId(){
+  let s=sessionStorage.getItem(SESSION_KEY);
+  if(!s){
+    s=uuid();
+    sessionStorage.setItem(SESSION_KEY,s);
+  }
+  return s;
+}
+
+function resumen(){
+  try{
+    if(typeof root.obtenerResumenMEV_P2==='function'){
+      const r=root.obtenerResumenMEV_P2();
+      if(r) return {H1:r.H1,H2:r.H2,H3:r.H3,H4:r.H4};
+    }
+  }catch(_){}
+
+  const m=alumno?.modulos||{};
+  const get=k=>{
+    const x=m[k]?.resultado||{};
+    return {
+      correctos:Number(x.aciertos||0),
+      total:Number(x.total||0)
+    };
+  };
+  return {H1:get('h1'),H2:get('h2'),H3:get('h3'),H4:get('h4')};
+}
+
+function getQueue(){
+  try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}
+  catch(_){return [];}
+}
+
+function saveQueue(q){
+  localStorage.setItem(QUEUE_KEY,JSON.stringify(q.slice(-180)));
+}
+
+function statusText(){
+  if(!ENABLED) return 'Seguimiento docente: desactivado.';
+  const n=getQueue().length;
+  return n
+    ? `Seguimiento docente: ${n} envío(s) pendiente(s) de sincronizar.`
+    : 'Seguimiento docente: sincronización al día.';
+}
+
+function renderStatus(){
+  let el=document.getElementById('memoSyncEstadoPMAF');
+  if(!el){
+    const host=document.getElementById('resumenAlumno')||document.getElementById('estadoRutaDashboard');
+    if(!host)return;
+    el=document.createElement('div');
+    el.id='memoSyncEstadoPMAF';
+    el.className='memo-sync-estado';
+    host.insertAdjacentElement('afterend',el);
+  }
+  el.innerHTML='<strong>MEMO:</strong> '+statusText();
+}
+
+function makeEvent(tipo_evento,extra={}){
+  return {
+    event_id:uuid(),
+    student_id:studentId(),
+    route_id:ROUTE_ID_SYNC,
+    route_version:ROUTE_VERSION_SYNC,
+    tipo_evento,
+    habilidad:extra.habilidad||'',
+    seccion:extra.seccion||'',
+    acreditado:extra.acreditado===undefined?null:extra.acreditado,
+    reto_generado:extra.reto_generado===true,
+    sesion_id:sessionId(),
+    resultados:resumen()
+  };
+}
+
+async function sendOne(evt){
+  const response=await fetch(ENDPOINT,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(evt),
+    redirect:'follow'
+  });
+  const data=await response.json();
+  if(!data || data.ok!==true) throw new Error(data?.error||'No se confirmó el envío.');
+  return data;
+}
+
+async function flush(){
+  if(!ENABLED || !validStudent() || !/^https?:\/\//.test(ENDPOINT)){
+    renderStatus();
+    return;
+  }
+
+  const q=getQueue();
+  if(!q.length){
+    renderStatus();
+    return;
+  }
+
+  const remaining=[];
+  for(let i=0;i<q.length;i++){
+    try{
+      await sendOne(q[i]);
+    }catch(_){
+      remaining.push(...q.slice(i));
+      break;
+    }
+  }
+  saveQueue(remaining);
+  renderStatus();
+}
+
+function checkpoint(tipo,extra={}){
+  if(!validStudent())return;
+  const q=getQueue();
+  q.push(makeEvent(tipo,extra));
+  saveQueue(q);
+  renderStatus();
+  if(ENABLED)flush();
+}
+
+/* Registro: PMAF I solo grupo 501. */
+const registrarBase=registrarAlumno;
+registrarAlumno=function(){
+  const sid=String(document.getElementById('studentId')?.value||'').replace(/\D/g,'');
+
+  if(!/^\d{5}$/.test(sid)){
+    alert('Captura un ID STUDENT válido de 5 dígitos.');
+    return;
+  }
+
+  if(sid.slice(0,3)!=='501'){
+    alert('Esta Ruta de Pensamiento Matemático Aplicado a las Finanzas I está autorizada únicamente para el grupo 501.');
+    return;
+  }
+
+  const anterior=alumno?.studentId||'';
+  const ret=registrarBase.apply(this,arguments);
+
+  if(alumno?.studentId && alumno.studentId!==anterior){
+    checkpoint('INICIO_RUTA',{seccion:'Registro e inicio'});
+  }
+
+  return ret;
+};
+
+/* Diagnóstico */
+if(typeof finalizar==='function'){
+  const finalizarBase=finalizar;
+  finalizar=function(){
+    const ret=finalizarBase.apply(this,arguments);
+    checkpoint('FIN_DIAGNOSTICO',{seccion:'Diagnóstico selectivo H1-H4'});
+    return ret;
+  };
+}
+
+/* Fin de bloque */
+[
+ ['H1','cerrarBloqueH1','practicaH1'],
+ ['H2','cerrarBloqueH2','practicaH2'],
+ ['H3','cerrarBloqueH3','practicaH3'],
+ ['H4','cerrarBloqueH4','practicaH4']
+].forEach(([h,fn,pkey])=>{
+  const prev=root[fn] || (typeof globalThis[fn]==='function' ? globalThis[fn] : null);
+  if(typeof prev!=='function')return;
+
+  const wrapped=function(){
+    const bloque=Number(alumno?.[pkey]?.bloqueNumero||0);
+    const ret=prev.apply(this,arguments);
+    checkpoint('FIN_BLOQUE',{
+      habilidad:h,
+      seccion:`${h} · Bloque ${bloque||'—'}`
+    });
+    return ret;
+  };
+
+  try{root[fn]=wrapped;}catch(_){}
+  try{globalThis[fn]=wrapped;}catch(_){}
+});
+
+/* Cierre/acreditación H1-H4 */
+[
+ ['H1','finalizarPracticaH1'],
+ ['H2','finalizarPracticaH2'],
+ ['H3','finalizarPracticaH3'],
+ ['H4','finalizarPracticaH4']
+].forEach(([h,fn])=>{
+  const prev=root[fn] || (typeof globalThis[fn]==='function' ? globalThis[fn] : null);
+  if(typeof prev!=='function')return;
+
+  const wrapped=function(consolidado){
+    const ret=prev.apply(this,arguments);
+
+    checkpoint(
+      consolidado===true?'ACREDITA_H':'CIERRE_H',
+      {
+        habilidad:h,
+        seccion:`${h} · cierre de módulo`,
+        acreditado:consolidado===true
+      }
+    );
+
+    if(consolidado===true && alumno?.rutaCompletada===true){
+      const key=CIERRE_KEY_PREFIX+studentId();
+      if(localStorage.getItem(key)!=='1'){
+        localStorage.setItem(key,'1');
+        checkpoint('CIERRE_RUTA',{seccion:'H1-H4 acreditadas'});
+      }
+    }
+
+    return ret;
+  };
+
+  try{root[fn]=wrapped;}catch(_){}
+  try{globalThis[fn]=wrapped;}catch(_){}
+});
+
+/* Reto MEMO */
+if(typeof abrirRetoLobo==='function'){
+  const retoBase=abrirRetoLobo;
+  abrirRetoLobo=function(){
+    const sid=studentId();
+    const key=RETO_KEY_PREFIX+sid;
+    const ya=localStorage.getItem(key)==='1';
+    const ret=retoBase.apply(this,arguments);
+
+    if(alumno?.rutaCompletada===true && !ya){
+      localStorage.setItem(key,'1');
+      checkpoint('RETO_GENERADO',{
+        seccion:'Reto MEMO final',
+        reto_generado:true
+      });
+    }
+
+    return ret;
+  };
+}
+
+/* Dashboard: estado y reintento */
+if(typeof actualizarDashboard==='function'){
+  const dashboardBase=actualizarDashboard;
+  actualizarDashboard=function(){
+    const ret=dashboardBase.apply(this,arguments);
+    renderStatus();
+    if(ENABLED)flush();
+    return ret;
+  };
+}
+
+root.addEventListener('online',()=>flush());
+root.addEventListener('load',()=>{
+  setTimeout(()=>{
+    renderStatus();
+    if(ENABLED)flush();
+  },0);
+});
+
+root.MEMO_PMAF_SYNC_FINAL_01={
+  version:VERSION,
+  endpoint:ENDPOINT,
+  routeId:ROUTE_ID_SYNC,
+  routeVersion:ROUTE_VERSION_SYNC,
+  groups:[...GROUPS],
+  checkpoint,
+  flush,
+  resumen,
+  getQueue,
+  validStudent
+};
+
+document.documentElement.dataset.memoPmafSync=VERSION;
+
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
+<script id="memoPmafReinicio01">
+(function(root){
+'use strict';
+
+/* Reinicio protegido para la capa final actualmente activa de PMAF. */
+const VERSION='MEMO-PMAF-REINICIO-FINAL-01';
+const STORAGE_KEYS=['rutasMemoPMAFI_P2_Alumno_v0_1'];
+const SYNC_QUEUE='memoSyncQueue_PMAF1P2_final01';
+const SYNC_SESSION='memoSyncSession_PMAF1P2_final01';
+const LEGACY_SYNC_QUEUE='memoSyncQueue_PMAF1P2_pilot01';
+const LEGACY_SYNC_SESSION='memoSyncSession_PMAF1P2_pilot01';
+const CIERRE_PREFIX='memoSyncCierre_PMAF1P2_';
+const RETO_PREFIX='memoSyncReto_PMAF1P2_';
+
+reiniciarRuta=function(){
+  if(!confirm('¿Seguro que deseas reiniciar la Ruta MEMO? Se eliminará el progreso guardado de este simulador.'))return;
+
+  const sid=String(alumno?.studentId||'').trim();
+
+  try{
+    if(typeof reinicioRutaEnCurso!=='undefined'){
+      reinicioRutaEnCurso=true;
+    }
+  }catch(_){}
+
+  try{
+    STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));
+    localStorage.removeItem(SYNC_QUEUE);
+    localStorage.removeItem(LEGACY_SYNC_QUEUE);
+    if(sid){
+      localStorage.removeItem(CIERRE_PREFIX+sid);
+      localStorage.removeItem(RETO_PREFIX+sid);
+    }
+    sessionStorage.removeItem(SYNC_SESSION);
+    sessionStorage.removeItem(LEGACY_SYNC_SESSION);
+  }catch(_){}
+
+  try{
+    alumno={};
+    diagnostico=[];
+    actual=0;
+    aciertos=0;
+    respuestasDiagnostico=[];
+    faseDiagnostico='base';
+    confirmacionesDiagnostico=[];
+    actualConfirmacion=0;
+    respuestasConfirmacion=[];
+  }catch(_){}
+
+  location.reload();
+};
+
+root.MEMO_PMAF_REINICIO_FINAL_01={version:VERSION};
+document.documentElement.dataset.memoPmafReinicio=VERSION;
+
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+
 </body>
 </html>

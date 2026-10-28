@@ -1,0 +1,34 @@
+PMAF I · Segundo Parcial · Rutas MEMO
+Versión pública con seguimiento semiautomático
+
+ARCHIVOS PARA GITHUB
+1. index.html
+2. MEMO_insignia_central.png
+
+CONFIGURACIÓN
+ROUTE_ID: PMAF1-P2
+ROUTE_VERSION: v1.0
+Grupo autorizado: 501
+Seguimiento remoto: ACTIVO
+
+INTEGRA
+- Línea estable PMAF I v1.0
+- Reiniciar Ruta protegido
+- Apps Script / Google Sheets
+- Cola local tolerante a fallos
+- Checkpoints:
+  INICIO_RUTA
+  FIN_DIAGNOSTICO
+  FIN_BLOQUE
+  ACREDITA_H
+  CIERRE_H
+  CIERRE_RUTA
+  RETO_GENERADO
+
+PUBLICACIÓN
+Reemplazar el index.html actual del repositorio GitHub por este index.html.
+Conservar/subir MEMO_insignia_central.png en la misma raíz.
+
+PRUEBA FINAL
+Abrir la URL pública de GitHub Pages en ventana privada, registrar un
+STUDENT_ID 501xx autorizado y comprobar INICIO_RUTA en SEGUIMIENTO_MEMO.
